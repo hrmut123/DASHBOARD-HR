@@ -38,23 +38,22 @@ st.markdown("""
     div[data-testid="metric-container"] label { color: #94a3b8; }
     div[data-testid="metric-container"] div[data-testid="stMetricValue"] { color: #38bdf8; }
 
-    /* Tabel */
+    /* Tabel Editor */
     div[data-testid="stDataEditor"] { background-color: #1e293b; border: 1px solid #475569; border-radius: 10px; }
     th { background-color: #020617 !important; color: #38bdf8 !important; border-bottom: 2px solid #334155 !important; text-align: center !important; }
     td { color: #e2e8f0 !important; background-color: #1e293b !important; text-align: center !important; }
 
-    /* Input */
+    /* Input Fields */
     .stTextInput input, .stSelectbox, .stNumberInput input, .stDateInput input, .stTextArea textarea {
         background-color: #334155 !important; color: white !important; border: 1px solid #475569 !important; border-radius: 5px;
     }
     
     /* Tombol */
-    .stButton button { background-color: #3b82f6; color: white; border-radius: 8px; font-weight: bold; border: none; }
-    .stButton button:hover { background-color: #2563eb; }
-    
-    /* Tombol Hapus (Merah) */
-    .delete-btn button { background-color: #ef4444 !important; }
-    .delete-btn button:hover { background-color: #dc2626 !important; }
+    .stButton button { width: 100%; border-radius: 8px; font-weight: bold; border: none; padding: 10px; }
+    button[kind="primary"] { background-color: #3b82f6; color: white; }
+    button[kind="primary"]:hover { background-color: #2563eb; }
+    button[kind="secondary"] { background-color: #ef4444; color: white; border: 1px solid #dc2626; }
+    button[kind="secondary"]:hover { background-color: #dc2626; }
 
     /* Expander */
     .streamlit-expanderHeader { background-color: #1e293b !important; color: white !important; border: 1px solid #334155; }
@@ -73,9 +72,9 @@ def load_data():
         try:
             df = pd.read_csv(FILE_EMP, dtype=str)
             df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
-            # Bersihkan kolom helper jika ada sisa
-            drop_cols = [c for c in df.columns if c in ['No', 'Ceklist', 'Pilih']]
-            if drop_cols: df = df.drop(columns=drop_cols)
+            if 'No' in df.columns: df = df.drop(columns=['No'])
+            if 'Ceklist' in df.columns: df = df.drop(columns=['Ceklist'])
+            if 'Pilih' in df.columns: df = df.drop(columns=['Pilih'])
             if len(df.columns) == 0: df = pd.DataFrame(columns=DEFAULT_COLS)
         except: df = pd.DataFrame(columns=DEFAULT_COLS)
     else: df = pd.DataFrame(columns=DEFAULT_COLS)
@@ -96,6 +95,47 @@ def save_data(df, df_att):
     df.to_csv(FILE_EMP, index=False)
     df_att.to_csv(FILE_ATT, index=False)
 
+# --- FUNGSI UPDATE FILE ASLI (Inject Data) ---
+def update_original_excel(original_file, df_new, sheet_name, start_row):
+    try:
+        # 1. Reset pointer file ke awal
+        original_file.seek(0)
+        
+        # 2. Load Workbook Asli (Agar format/warna tidak hilang)
+        wb = load_workbook(original_file)
+        
+        # 3. Cek Sheet
+        if sheet_name not in wb.sheetnames:
+            return None, f"Sheet '{sheet_name}' tidak ditemukan di file asli."
+        ws = wb[sheet_name]
+        
+        # 4. Bersihkan Kolom Helper sebelum ditulis
+        clean_df = df_new.copy()
+        for col in ['Pilih', 'No', 'Ceklist']:
+            if col in clean_df.columns: clean_df = clean_df.drop(columns=[col])
+            
+        data_rows = clean_df.values.tolist()
+        excel_start_row = start_row + 1 # openpyxl mulai dari 1
+        
+        # 5. Tulis Ulang Data (Overwrite)
+        # Kita hanya menimpa isi sel, format (bold/warna) tetap ikut file asli
+        for i, row_data in enumerate(data_rows):
+            for j, value in enumerate(row_data):
+                # i + excel_start_row = baris
+                # j + 1 = kolom (A=1, B=2, dst)
+                cell = ws.cell(row=i + excel_start_row, column=j + 1)
+                cell.value = value
+
+        # 6. Simpan ke Memory Buffer
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+        return output, "Success"
+        
+    except Exception as e:
+        return None, str(e)
+
+# --- FUNGSI REKAP EXCEL BARU ---
 def create_colorful_excel(df, title_text):
     output = io.BytesIO()
     clean_df = df.copy()
@@ -165,9 +205,11 @@ if selected == "Dashboard Karyawan":
     st.title("📂 Database Karyawan")
     st.markdown("---")
     
+    # State untuk menyimpan file asli di memori
     if 'uploaded_template' not in st.session_state: st.session_state['uploaded_template'] = None
     if 'sheet_name_template' not in st.session_state: st.session_state['sheet_name_template'] = ""
     if 'header_row_template' not in st.session_state: st.session_state['header_row_template'] = 6
+    if 'show_download' not in st.session_state: st.session_state['show_download'] = False # Kontrol tombol download
 
     if not df_employees.empty:
         # Metrics
@@ -180,14 +222,13 @@ if selected == "Dashboard Karyawan":
         m4.metric("Status", "Active")
         st.write("")
         
-        # Charts (Grafik)
+        # Charts
         has_dept = 'Departemen' in df_employees.columns
         has_jab = 'Jabatan' in df_employees.columns
         if has_dept or has_jab:
             c1, c2 = st.columns(2)
             with c1:
                 if has_dept:
-                    # Ambil 10 Departemen terbanyak agar grafik tidak penuh sesak
                     d_cnt = df_employees['Departemen'].value_counts().head(10).reset_index()
                     d_cnt.columns = ['Departemen', 'Jumlah']
                     fig = px.bar(d_cnt, x='Departemen', y='Jumlah', color='Departemen', title="Top 10 Departemen", template='plotly_dark')
@@ -195,7 +236,6 @@ if selected == "Dashboard Karyawan":
                     st.plotly_chart(fig, use_container_width=True)
             with c2:
                 if has_jab:
-                    # Ambil 10 Jabatan terbanyak
                     j_cnt = df_employees['Jabatan'].value_counts().head(10).reset_index()
                     j_cnt.columns = ['Jabatan', 'Jumlah']
                     fig = px.pie(j_cnt, names='Jabatan', values='Jumlah', title="Top 10 Jabatan", hole=0.5, template='plotly_dark')
@@ -219,12 +259,8 @@ if selected == "Dashboard Karyawan":
                     
                     if st.button("Load Data", type="primary"):
                         df = pd.read_excel(up_file, sheet_name=sh, header=rw-1, dtype=str)
-                        
-                        # --- SMART MAPPING V2 (SUPER LENGKAP) ---
-                        # Kita bersihkan nama kolom dulu (hapus spasi, uppercase)
+                        # Smart Mapping
                         df.columns = [str(c).strip().upper() for c in df.columns]
-                        
-                        # Kamus terjemahan yang lebih luas
                         rename_map = {
                             "NO. INDUK": "NIK", "NIK/NRP": "NIK", "NO INDUK": "NIK",
                             "NAMA LENGKAP": "Nama", "NAMA KARYAWAN": "Nama", "NAMA": "Nama",
@@ -232,20 +268,15 @@ if selected == "Dashboard Karyawan":
                             "DEPARTEMEN": "Departemen", "DIVISI": "Departemen", "BAGIAN": "Departemen", "DEPARTEMEN BARU": "Departemen", "DEPT": "Departemen",
                             "PT": "PT", "PERUSAHAAN": "PT", "ENTITY": "PT", "PT BARU": "PT"
                         }
-                        
-                        # Proses Rename
                         df.rename(columns=rename_map, inplace=True)
-                        
-                        # Hapus kolom sampah
                         df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
-                        
-                        # Filter Data Valid (Wajib ada NIK)
                         if 'NIK' in df.columns: 
                             df = df[df['NIK'].notna()]
                             df = df[df['NIK'].astype(str).str.strip() != '']
                         
                         df_employees = df; save_data(df_employees, df_attendance)
                         st.session_state['sheet_name_template'] = sh; st.session_state['header_row_template'] = rw
+                        st.session_state['show_download'] = False # Reset download button
                         st.success(f"Loaded {len(df)} rows."); st.rerun()
                 except Exception as e: st.error(f"Error: {e}")
 
@@ -281,17 +312,23 @@ if selected == "Dashboard Karyawan":
             column_config={"Pilih": st.column_config.CheckboxColumn("Hapus?", width="small")}
         )
         
+        # --- TOMBOL AKSI ---
         b1, b2, b3 = st.columns([1, 1, 3])
         
         with b1:
+            # Tombol Simpan
             if st.button("💾 Simpan Perubahan", type="primary"):
                 if search: st.warning("Harap hapus kata kunci pencarian.")
                 else: 
                     final_df = edited.drop(columns=['Pilih'])
                     save_data(final_df, df_attendance)
-                    st.success("Tersimpan!"); st.rerun()
+                    st.success("Tersimpan!")
+                    # Munculkan Tombol Download
+                    st.session_state['show_download'] = True
+                    st.rerun()
         
         with b2:
+            # Tombol Hapus
             if st.button("🗑️ Hapus Terpilih", type="secondary"):
                 if search:
                     st.warning("Hapus filter dulu.")
@@ -305,25 +342,38 @@ if selected == "Dashboard Karyawan":
                     else: st.info("Pilih data dulu.")
 
         with b3:
-            if st.session_state['uploaded_template']:
-                try:
-                    out = io.BytesIO()
-                    st.session_state['uploaded_template'].seek(0)
-                    wb = load_workbook(st.session_state['uploaded_template'])
-                    ws = wb[st.session_state['sheet_name_template']]
-                    export_df = edited.drop(columns=['Pilih'])
-                    rows = export_df.values.tolist()
-                    start = st.session_state['header_row_template'] + 1
-                    for i, r_data in enumerate(rows):
-                        for j, val in enumerate(r_data):
-                            ws.cell(row=i+start, column=j+1, value=val)
-                    wb.save(out); out.seek(0)
-                    st.download_button("📥 Download Excel Asli", out, "Update_Karyawan.xlsx")
-                except: st.warning("Gagal format asli.")
-            else:
-                export_df = edited.drop(columns=['Pilih'])
-                xl = create_colorful_excel(export_df, "DATABASE KARYAWAN")
-                st.download_button("📥 Download Excel Baru", xl, "Database.xlsx")
+            # Tombol Download (Hanya muncul jika st.session_state['show_download'] == True)
+            if st.session_state.get('show_download', False):
+                if st.session_state['uploaded_template']:
+                    try:
+                        # LOGIKA UPDATE FILE ASLI
+                        final_df_to_download = df_employees # Ambil data terbaru dari state
+                        
+                        out_buffer, status = update_original_excel(
+                            st.session_state['uploaded_template'], 
+                            final_df_to_download, 
+                            st.session_state['sheet_name_template'], 
+                            st.session_state['header_row_template']
+                        )
+                        
+                        if out_buffer:
+                            st.download_button(
+                                label="📥 Download File Update (Excel Asli)", 
+                                data=out_buffer, 
+                                file_name="SO_MUT_UPDATED.xlsx",
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                type="primary" 
+                            )
+                        else:
+                            st.error(status)
+                    except Exception as e:
+                        st.error(f"Gagal memproses file asli: {e}")
+                        # Fallback
+                        xl = create_colorful_excel(df_employees, "DATABASE KARYAWAN")
+                        st.download_button("📥 Download Excel (Standard)", xl, "Database.xlsx")
+                else:
+                    st.info("⚠️ File Master Excel belum diupload. Tombol ini hanya berfungsi jika Anda mengupload Excel di awal.")
+
     else: st.info("Database kosong.")
 
 # ==========================================
