@@ -13,7 +13,7 @@ from streamlit_option_menu import option_menu
 # 1. KONFIGURASI HALAMAN
 # ==========================================
 st.set_page_config(
-    page_title="DASHBOARD HR",
+    page_title="HRIS Dark Pro",
     layout="wide",
     page_icon="🚀",
     initial_sidebar_state="expanded"
@@ -24,11 +24,8 @@ st.set_page_config(
 # ==========================================
 st.markdown("""
     <style>
-    /* Background & Sidebar */
     .stApp { background-color: #0f172a; color: #f8fafc; }
     section[data-testid="stSidebar"] { background-color: #1e293b; border-right: 1px solid #334155; }
-    
-    /* Kartu Metric */
     div[data-testid="metric-container"] {
         background-color: #1e293b; border: 1px solid #334155;
         padding: 15px; border-radius: 10px; color: white;
@@ -37,25 +34,17 @@ st.markdown("""
     div[data-testid="metric-container"]:hover { border-color: #3b82f6; transform: translateY(-5px); }
     div[data-testid="metric-container"] label { color: #94a3b8; }
     div[data-testid="metric-container"] div[data-testid="stMetricValue"] { color: #38bdf8; }
-
-    /* Tabel Editor */
     div[data-testid="stDataEditor"] { background-color: #1e293b; border: 1px solid #475569; border-radius: 10px; }
     th { background-color: #020617 !important; color: #38bdf8 !important; border-bottom: 2px solid #334155 !important; text-align: center !important; }
     td { color: #e2e8f0 !important; background-color: #1e293b !important; text-align: center !important; }
-
-    /* Input Fields */
     .stTextInput input, .stSelectbox, .stNumberInput input, .stDateInput input, .stTextArea textarea {
         background-color: #334155 !important; color: white !important; border: 1px solid #475569 !important; border-radius: 5px;
     }
-    
-    /* Tombol */
     .stButton button { width: 100%; border-radius: 8px; font-weight: bold; border: none; padding: 10px; }
     button[kind="primary"] { background-color: #3b82f6; color: white; }
     button[kind="primary"]:hover { background-color: #2563eb; }
     button[kind="secondary"] { background-color: #ef4444; color: white; border: 1px solid #dc2626; }
     button[kind="secondary"]:hover { background-color: #dc2626; }
-
-    /* Expander */
     .streamlit-expanderHeader { background-color: #1e293b !important; color: white !important; border: 1px solid #334155; }
     </style>
 """, unsafe_allow_html=True)
@@ -67,14 +56,32 @@ FILE_EMP = 'data_karyawan.csv'
 FILE_ATT = 'data_absensi.csv'
 DEFAULT_COLS = ['PT', 'NIK', 'Nama', 'Jabatan', 'Departemen']
 
+def clean_dataframe(df):
+    """Pembersih DataFrame Ultimate"""
+    # 1. Pastikan nama kolom string
+    df.columns = [str(c).strip() for c in df.columns]
+    
+    # 2. Hapus kolom 'Unnamed', 'nan', atau kosong
+    # Menggunakan list comprehension untuk memfilter kolom yang valid saja
+    valid_cols = [c for c in df.columns if 'UNNAMED' not in c.upper() and c != '' and c.lower() != 'nan']
+    df = df[valid_cols]
+    
+    # 3. Hapus kolom helper sisa
+    drop_list = ['No', 'Ceklist', 'Pilih']
+    for col in drop_list:
+        if col in df.columns:
+            df = df.drop(columns=[col])
+            
+    # 4. Hapus kolom yang isinya kosong semua (All NaN)
+    df = df.dropna(axis=1, how='all')
+            
+    return df
+
 def load_data():
     if os.path.exists(FILE_EMP):
         try:
             df = pd.read_csv(FILE_EMP, dtype=str)
-            df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
-            if 'No' in df.columns: df = df.drop(columns=['No'])
-            if 'Ceklist' in df.columns: df = df.drop(columns=['Ceklist'])
-            if 'Pilih' in df.columns: df = df.drop(columns=['Pilih'])
+            df = clean_dataframe(df)
             if len(df.columns) == 0: df = pd.DataFrame(columns=DEFAULT_COLS)
         except: df = pd.DataFrame(columns=DEFAULT_COLS)
     else: df = pd.DataFrame(columns=DEFAULT_COLS)
@@ -82,65 +89,44 @@ def load_data():
     if os.path.exists(FILE_ATT):
         try:
             df_att = pd.read_csv(FILE_ATT, dtype=str)
-            df_att = df_att.loc[:, ~df_att.columns.str.contains('^Unnamed')]
-            if 'Pilih' in df_att.columns: df_att = df_att.drop(columns=['Pilih'])
+            df_att = clean_dataframe(df_att)
         except: df_att = pd.DataFrame(columns=['Tanggal', 'NIK', 'Nama', 'Departemen', 'Jenis', 'Keterangan', 'Waktu_Input'])
     else: df_att = pd.DataFrame(columns=['Tanggal', 'NIK', 'Nama', 'Departemen', 'Jenis', 'Keterangan', 'Waktu_Input'])
     
     return df, df_att
 
 def save_data(df, df_att):
-    if 'Pilih' in df.columns: df = df.drop(columns=['Pilih'])
-    if 'Pilih' in df_att.columns: df_att = df_att.drop(columns=['Pilih'])
+    df = clean_dataframe(df)
+    df_att = clean_dataframe(df_att)
     df.to_csv(FILE_EMP, index=False)
     df_att.to_csv(FILE_ATT, index=False)
 
-# --- FUNGSI UPDATE FILE ASLI (Inject Data) ---
 def update_original_excel(original_file, df_new, sheet_name, start_row):
     try:
-        # 1. Reset pointer file ke awal
         original_file.seek(0)
-        
-        # 2. Load Workbook Asli (Agar format/warna tidak hilang)
         wb = load_workbook(original_file)
-        
-        # 3. Cek Sheet
         if sheet_name not in wb.sheetnames:
-            return None, f"Sheet '{sheet_name}' tidak ditemukan di file asli."
+            return None, f"Sheet '{sheet_name}' tidak ditemukan."
         ws = wb[sheet_name]
         
-        # 4. Bersihkan Kolom Helper sebelum ditulis
-        clean_df = df_new.copy()
-        for col in ['Pilih', 'No', 'Ceklist']:
-            if col in clean_df.columns: clean_df = clean_df.drop(columns=[col])
-            
+        clean_df = clean_dataframe(df_new)
         data_rows = clean_df.values.tolist()
-        excel_start_row = start_row + 1 # openpyxl mulai dari 1
+        excel_start_row = start_row + 1 
         
-        # 5. Tulis Ulang Data (Overwrite)
-        # Kita hanya menimpa isi sel, format (bold/warna) tetap ikut file asli
         for i, row_data in enumerate(data_rows):
             for j, value in enumerate(row_data):
-                # i + excel_start_row = baris
-                # j + 1 = kolom (A=1, B=2, dst)
                 cell = ws.cell(row=i + excel_start_row, column=j + 1)
                 cell.value = value
 
-        # 6. Simpan ke Memory Buffer
         output = io.BytesIO()
         wb.save(output)
         output.seek(0)
         return output, "Success"
-        
-    except Exception as e:
-        return None, str(e)
+    except Exception as e: return None, str(e)
 
-# --- FUNGSI REKAP EXCEL BARU ---
 def create_colorful_excel(df, title_text):
     output = io.BytesIO()
-    clean_df = df.copy()
-    for col in ['No', 'Ceklist', 'Pilih']:
-        if col in clean_df.columns: clean_df = clean_df.drop(columns=[col])
+    clean_df = clean_dataframe(df)
 
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         clean_df.to_excel(writer, index=False, sheet_name='Laporan', startrow=3)
@@ -182,7 +168,7 @@ df_employees, df_attendance = load_data()
 # 4. SIDEBAR MENU
 # ==========================================
 with st.sidebar:
-    st.markdown("<h1 style='text-align: center; color: #38bdf8;'>⚡ DASHBOARD HR</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: #38bdf8;'>⚡ HRIS PRO</h1>", unsafe_allow_html=True)
     selected = option_menu(
         menu_title=None,
         options=["Dashboard Karyawan", "Input Absensi", "Laporan Rekap"],
@@ -205,14 +191,12 @@ if selected == "Dashboard Karyawan":
     st.title("📂 Database Karyawan")
     st.markdown("---")
     
-    # State untuk menyimpan file asli di memori
     if 'uploaded_template' not in st.session_state: st.session_state['uploaded_template'] = None
     if 'sheet_name_template' not in st.session_state: st.session_state['sheet_name_template'] = ""
     if 'header_row_template' not in st.session_state: st.session_state['header_row_template'] = 6
-    if 'show_download' not in st.session_state: st.session_state['show_download'] = False # Kontrol tombol download
+    if 'show_download' not in st.session_state: st.session_state['show_download'] = False
 
     if not df_employees.empty:
-        # Metrics
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Total Pegawai", len(df_employees))
         dept_num = df_employees['Departemen'].nunique() if 'Departemen' in df_employees.columns else 0
@@ -222,7 +206,6 @@ if selected == "Dashboard Karyawan":
         m4.metric("Status", "Active")
         st.write("")
         
-        # Charts
         has_dept = 'Departemen' in df_employees.columns
         has_jab = 'Jabatan' in df_employees.columns
         if has_dept or has_jab:
@@ -269,14 +252,18 @@ if selected == "Dashboard Karyawan":
                             "PT": "PT", "PERUSAHAAN": "PT", "ENTITY": "PT", "PT BARU": "PT"
                         }
                         df.rename(columns=rename_map, inplace=True)
-                        df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+                        
+                        # --- PEMBERSIH SUPER ---
+                        df = clean_dataframe(df)
+                        
+                        df.dropna(how='all', inplace=True)
                         if 'NIK' in df.columns: 
                             df = df[df['NIK'].notna()]
                             df = df[df['NIK'].astype(str).str.strip() != '']
                         
                         df_employees = df; save_data(df_employees, df_attendance)
                         st.session_state['sheet_name_template'] = sh; st.session_state['header_row_template'] = rw
-                        st.session_state['show_download'] = False # Reset download button
+                        st.session_state['show_download'] = False
                         st.success(f"Loaded {len(df)} rows."); st.rerun()
                 except Exception as e: st.error(f"Error: {e}")
 
@@ -312,23 +299,19 @@ if selected == "Dashboard Karyawan":
             column_config={"Pilih": st.column_config.CheckboxColumn("Hapus?", width="small")}
         )
         
-        # --- TOMBOL AKSI ---
         b1, b2, b3 = st.columns([1, 1, 3])
         
         with b1:
-            # Tombol Simpan
             if st.button("💾 Simpan Perubahan", type="primary"):
                 if search: st.warning("Harap hapus kata kunci pencarian.")
                 else: 
                     final_df = edited.drop(columns=['Pilih'])
                     save_data(final_df, df_attendance)
                     st.success("Tersimpan!")
-                    # Munculkan Tombol Download
                     st.session_state['show_download'] = True
                     st.rerun()
         
         with b2:
-            # Tombol Hapus
             if st.button("🗑️ Hapus Terpilih", type="secondary"):
                 if search:
                     st.warning("Hapus filter dulu.")
@@ -342,20 +325,15 @@ if selected == "Dashboard Karyawan":
                     else: st.info("Pilih data dulu.")
 
         with b3:
-            # Tombol Download (Hanya muncul jika st.session_state['show_download'] == True)
             if st.session_state.get('show_download', False):
                 if st.session_state['uploaded_template']:
                     try:
-                        # LOGIKA UPDATE FILE ASLI
-                        final_df_to_download = df_employees # Ambil data terbaru dari state
-                        
                         out_buffer, status = update_original_excel(
                             st.session_state['uploaded_template'], 
-                            final_df_to_download, 
+                            df_employees, 
                             st.session_state['sheet_name_template'], 
                             st.session_state['header_row_template']
                         )
-                        
                         if out_buffer:
                             st.download_button(
                                 label="📥 Download File Update (Excel Asli)", 
@@ -364,20 +342,17 @@ if selected == "Dashboard Karyawan":
                                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                                 type="primary" 
                             )
-                        else:
-                            st.error(status)
+                        else: st.error(status)
                     except Exception as e:
-                        st.error(f"Gagal memproses file asli: {e}")
-                        # Fallback
-                        xl = create_colorful_excel(df_employees, "DATABASE KARYAWAN")
-                        st.download_button("📥 Download Excel (Standard)", xl, "Database.xlsx")
+                        st.error(f"Error: {e}")
                 else:
-                    st.info("⚠️ File Master Excel belum diupload. Tombol ini hanya berfungsi jika Anda mengupload Excel di awal.")
+                    xl = create_colorful_excel(df_employees, "DATABASE KARYAWAN")
+                    st.download_button("📥 Download Excel Baru", xl, "Database.xlsx")
 
     else: st.info("Database kosong.")
 
 # ==========================================
-# 6. INPUT ABSENSI (DENGAN FITUR HAPUS)
+# 6. INPUT ABSENSI
 # ==========================================
 elif selected == "Input Absensi":
     st.title("📝 Presensi Harian")
