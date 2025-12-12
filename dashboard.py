@@ -22,7 +22,6 @@ st.set_page_config(
 # ==========================================
 # 2. SISTEM LOGIN (SECURITY)
 # ==========================================
-# Daftar Pengguna (Username: Password)
 USERS = {
     "admin": "kiki",
     "hrd": "aan",
@@ -30,102 +29,61 @@ USERS = {
 }
 
 def check_login(username, password):
-    """Cek apakah username dan password valid"""
     if username in USERS and USERS[username] == password:
         return True
     return False
 
-# Inisialisasi status login
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 
 # --- TAMPILAN HALAMAN LOGIN ---
 if not st.session_state['logged_in']:
-    # CSS Khusus Login agar di tengah
     st.markdown("""
         <style>
-        .stApp { background-color: #0f172a; color: white; }
-        div.stButton > button { width: 100%; background-color: #3b82f6; color: white; border: none; padding: 10px; border-radius: 5px; }
-        div.stButton > button:hover { background-color: #2563eb; }
-        .login-box {
-            padding: 2rem;
-            border-radius: 10px;
-            background-color: #1e293b;
-            border: 1px solid #334155;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            max-width: 400px;
-            margin: auto;
-        }
+        .stApp { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; }
+        .login-box { padding: 40px; background: rgba(30, 41, 59, 0.7); border-radius: 20px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
+        .stTextInput input { background-color: rgba(15, 23, 42, 0.6) !important; color: white !important; border: 1px solid #475569 !important; border-radius: 10px; }
+        .stButton button { width: 100%; background: linear-gradient(90deg, #3b82f6, #2563eb); color: white; border: none; padding: 12px; border-radius: 30px; font-weight: bold; }
         </style>
     """, unsafe_allow_html=True)
 
-    # Layout Login Tengah
-    col1, col2, col3 = st.columns([1, 1, 1])
-    
+    col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
-        st.markdown("<br><br><br>", unsafe_allow_html=True) # Spacer
-        st.markdown("<h1 style='text-align: center;'>🔐 Dashboard HR Login</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #94a3b8;'>Silakan masuk untuk mengakses dashboard</p>", unsafe_allow_html=True)
-        
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.markdown('<div class="login-box"><h1>🔐 HRIS PRO</h1><p>Silakan Login</p>', unsafe_allow_html=True)
         with st.form("login_form"):
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
-            submitted = st.form_submit_button("Masuk / Login")
-            
-            if submitted:
+            if st.form_submit_button("MASUK"):
                 if check_login(username, password):
                     st.session_state['logged_in'] = True
-                    st.success("Login Berhasil!")
-                    st.rerun()
-                else:
-                    st.error("Username atau Password salah!")
-    
-    # Hentikan program di sini jika belum login (Dashboard di bawah tidak akan dimuat)
+                    st.success("Sukses!"); st.rerun()
+                else: st.error("Username/Password Salah!")
+        st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
 # ==========================================
-# 3. CSS DASHBOARD (DIMUAT SETELAH LOGIN)
+# 3. CSS DARK MODE PREMIUM
 # ==========================================
 st.markdown("""
     <style>
-    /* Background & Sidebar */
     .stApp { background-color: #0f172a; color: #f8fafc; }
     section[data-testid="stSidebar"] { background-color: #1e293b; border-right: 1px solid #334155; }
-    
-    /* Kartu Metric */
-    div[data-testid="metric-container"] {
-        background-color: #1e293b; border: 1px solid #334155;
-        padding: 15px; border-radius: 10px; color: white;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); transition: 0.3s;
-    }
-    div[data-testid="metric-container"]:hover { border-color: #3b82f6; transform: translateY(-5px); }
-    div[data-testid="metric-container"] label { color: #94a3b8; font-size: 0.8rem; }
-    div[data-testid="metric-container"] div[data-testid="stMetricValue"] { color: #38bdf8; font-size: 1.5rem; }
-
-    /* Tabel Editor */
-    div[data-testid="stDataEditor"] { background-color: #1e293b; border: 1px solid #475569; border-radius: 10px; }
+    div[data-testid="metric-container"] { background-color: #1e293b; border: 1px solid #334155; padding: 15px; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
+    div[data-testid="metric-container"] label { color: #94a3b8; }
+    div[data-testid="metric-container"] div[data-testid="stMetricValue"] { color: #38bdf8; }
     th { background-color: #020617 !important; color: #38bdf8 !important; border-bottom: 2px solid #334155 !important; text-align: center !important; }
     td { color: #e2e8f0 !important; background-color: #1e293b !important; text-align: center !important; }
-
-    /* Input Fields */
-    .stTextInput input, .stSelectbox, .stNumberInput input, .stDateInput input, .stTextArea textarea {
-        background-color: #334155 !important; color: white !important; border: 1px solid #475569 !important; border-radius: 5px;
-    }
-    
-    /* Tombol */
+    .stTextInput input, .stSelectbox, .stNumberInput input, .stDateInput input, .stTextArea textarea { background-color: #334155 !important; color: white !important; border: 1px solid #475569 !important; border-radius: 5px; }
     .stButton button { width: 100%; border-radius: 8px; font-weight: bold; border: none; padding: 10px; }
     button[kind="primary"] { background-color: #3b82f6; color: white; }
-    button[kind="primary"]:hover { background-color: #2563eb; }
     button[kind="secondary"] { background-color: #ef4444; color: white; border: 1px solid #dc2626; }
-    button[kind="secondary"]:hover { background-color: #dc2626; }
-
-    /* Expander */
     .streamlit-expanderHeader { background-color: #1e293b !important; color: white !important; border: 1px solid #334155; }
     </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 4. BACKEND LOGIC (DATA)
+# 4. BACKEND LOGIC
 # ==========================================
 FILE_EMP = 'data_karyawan.csv'
 FILE_ATT = 'data_absensi.csv'
@@ -133,14 +91,24 @@ DEFAULT_COLS = ['PT', 'NIK', 'Nama', 'Jabatan', 'Departemen']
 ATT_COLS = ['Tanggal', 'NIK', 'Nama', 'Departemen', 'Jenis', 'Keterangan', 'Waktu_Input', 'Durasi']
 
 def clean_dataframe(df):
-    """Pembersih DataFrame Ultimate"""
+    # 1. Bersihkan Nama Kolom
     df.columns = [str(c).strip() for c in df.columns]
+    
+    # 2. Buang kolom Unnamed/Kosong
     valid_cols = [c for c in df.columns if 'UNNAMED' not in c.upper() and c != '' and c.lower() != 'nan']
     df = df[valid_cols]
-    drop_list = ['No', 'Ceklist', 'Pilih']
-    for col in drop_list:
+    
+    # 3. Buang kolom helper
+    for col in ['No', 'Ceklist', 'Pilih']:
         if col in df.columns: df = df.drop(columns=[col])
-    df = df.dropna(axis=1, how='all')
+    
+    # 4. ISI KOSONG DENGAN "-" (Supaya baris tidak terhapus)
+    df = df.fillna("-")
+    
+    # 5. Hapus baris yang BENAR-BENAR KOSONG SEMUA (Hantu)
+    temp_df = df.replace("-", None)
+    df = df[temp_df.notna().any(axis=1)]
+    
     return df
 
 def load_data():
@@ -174,16 +142,13 @@ def update_original_excel(original_file, df_new, sheet_name, start_row):
         wb = load_workbook(original_file)
         if sheet_name not in wb.sheetnames: return None, f"Sheet '{sheet_name}' tidak ditemukan."
         ws = wb[sheet_name]
-        
         clean_df = clean_dataframe(df_new)
         data_rows = clean_df.values.tolist()
         excel_start_row = start_row + 1 
-        
         for i, row_data in enumerate(data_rows):
             for j, value in enumerate(row_data):
                 cell = ws.cell(row=i + excel_start_row, column=j + 1)
                 cell.value = value
-
         output = io.BytesIO()
         wb.save(output)
         output.seek(0)
@@ -193,29 +158,23 @@ def update_original_excel(original_file, df_new, sheet_name, start_row):
 def create_colorful_excel(df, title_text):
     output = io.BytesIO()
     clean_df = clean_dataframe(df)
-
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         clean_df.to_excel(writer, index=False, sheet_name='Laporan', startrow=3)
         ws = writer.sheets['Laporan']
-        
         header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
         row_fill = PatternFill(start_color="DDEBF7", end_color="DDEBF7", fill_type="solid")
         font_white = Font(color="FFFFFF", bold=True, size=11)
         font_title = Font(color="1F4E78", bold=True, size=16)
         border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
         center = Alignment(horizontal="center", vertical="center")
-
         ws['A1'] = title_text; ws['A1'].font = font_title
         ws['A2'] = f"Generated: {datetime.now().strftime('%d-%m-%Y %H:%M')}"
-
         for cell in ws[4]:
             cell.fill = header_fill; cell.font = font_white; cell.alignment = center; cell.border = border
-        
         for row in ws.iter_rows(min_row=5, max_row=ws.max_row, min_col=1, max_col=ws.max_column):
             for cell in row:
                 cell.border = border; cell.alignment = center
                 if cell.row % 2 == 0: cell.fill = row_fill
-        
         for col in ws.columns:
             max_len = 0
             col_let = get_column_letter(col[0].column)
@@ -224,7 +183,6 @@ def create_colorful_excel(df, title_text):
                     if len(str(cell.value)) > max_len: max_len = len(str(cell.value))
                 except: pass
             ws.column_dimensions[col_let].width = (max_len + 2) * 1.2
-            
     output.seek(0)
     return output
 
@@ -235,7 +193,6 @@ df_employees, df_attendance = load_data()
 # ==========================================
 with st.sidebar:
     st.markdown("<h1 style='text-align: center; color: #38bdf8;'>⚡ DASHBOARD HR</h1>", unsafe_allow_html=True)
-    
     selected = option_menu(
         menu_title=None,
         options=["Dashboard Karyawan", "Input Absensi", "Laporan Rekap"],
@@ -248,13 +205,10 @@ with st.sidebar:
             "nav-link-selected": {"background-color": "#3b82f6", "color": "white"},
         }
     )
-    
     st.markdown("---")
-    # Tombol Logout
     if st.button("🚪 Logout", type="secondary"):
         st.session_state['logged_in'] = False
         st.rerun()
-        
     st.markdown("---")
     st.caption("Mode: Dark Premium")
 
@@ -284,7 +238,7 @@ if selected == "Dashboard Karyawan":
         m4.metric("Status", "Active")
         st.write("")
         
-        # Charts
+        # Charts (TOP 10)
         has_dept = 'Departemen' in df_employees.columns
         has_jab = 'Jabatan' in df_employees.columns
         if has_dept or has_jab:
@@ -307,7 +261,7 @@ if selected == "Dashboard Karyawan":
 
     c_up, c_add = st.columns(2)
     with c_up:
-        with st.expander("📥 Import Excel (SO MUT)", expanded=False):
+        with st.expander("📥 Import Excel (Standard)", expanded=False):
             up_file = st.file_uploader("File .xlsx", type=['xlsx'])
             if up_file:
                 st.session_state['uploaded_template'] = up_file
@@ -317,10 +271,15 @@ if selected == "Dashboard Karyawan":
                     for i, n in enumerate(xls.sheet_names): 
                         if "DATABASE SESUAI SO".lower() in n.lower(): idx = i; break
                     sh = st.selectbox("Sheet:", xls.sheet_names, index=idx)
-                    rw = st.number_input("Header Baris:", 1, 20, 6)
+                    
+                    # --- INPUT HEADER ROW DIKEMBALIKAN ---
+                    # Default 6 (Sesuai File SO MUT), tapi bisa diganti user
+                    rw = st.number_input("Header Baris ke:", min_value=1, value=6, help="Baris di Excel dimana nama kolom berada")
                     
                     if st.button("Load Data", type="primary"):
+                        # Baca data dari Header yang ditentukan user
                         df = pd.read_excel(up_file, sheet_name=sh, header=rw-1, dtype=str)
+                        
                         df.columns = [str(c).strip().upper() for c in df.columns]
                         rename_map = {
                             "NO. INDUK": "NIK", "NIK/NRP": "NIK", "NO INDUK": "NIK",
@@ -330,11 +289,9 @@ if selected == "Dashboard Karyawan":
                             "PT": "PT", "PERUSAHAAN": "PT", "ENTITY": "PT", "PT BARU": "PT"
                         }
                         df.rename(columns=rename_map, inplace=True)
+                        
+                        # CLEAN DATAFRAME (TANPA MENGHAPUS BARIS KOSONG)
                         df = clean_dataframe(df)
-                        df.dropna(how='all', inplace=True)
-                        if 'NIK' in df.columns: 
-                            df = df[df['NIK'].notna()]
-                            df = df[df['NIK'].astype(str).str.strip() != '']
                         
                         df_employees = df; save_data(df_employees, df_attendance)
                         st.session_state['sheet_name_template'] = sh; st.session_state['header_row_template'] = rw
@@ -438,7 +395,7 @@ if selected == "Dashboard Karyawan":
     else: st.info("Database kosong.")
 
 # ==========================================
-# 7. INPUT ABSENSI
+# 6. INPUT ABSENSI (SINGLE ROW LOGIC)
 # ==========================================
 elif selected == "Input Absensi":
     st.title("📝 Presensi Harian")
@@ -561,20 +518,15 @@ elif selected == "Laporan Rekap":
         
         df_att_show = df_attendance.copy()
         if not df_att_show.empty:
-            # Filter Tanggal (Parse String)
             df_att_show['Tgl_Filter'] = df_att_show['Tanggal'].astype(str).str.slice(0, 10)
             df_att_show['Tgl_Filter'] = pd.to_datetime(df_att_show['Tgl_Filter'], errors='coerce')
             
             mask = (df_att_show['Tgl_Filter'].dt.month == bln) & (df_att_show['Tgl_Filter'].dt.year == thn)
             fil = df_att_show[mask]
             
-            # 1. METRICS ATAS (BREAKDOWN)
             fil['Durasi'] = pd.to_numeric(fil['Durasi'], errors='coerce').fillna(1)
-            
-            # Hitung total durasi per kategori
             rekap_jenis = fil.groupby('Jenis')['Durasi'].sum()
             
-            # Tampilkan 6 Kotak Metric
             m_cols = st.columns(6)
             categories = ["Sakit (Ada Surat)", "Sakit (Tanpa Surat)", "Izin Resmi", "Izin Tidak Resmi", "Cuti", "Alpha"]
             
@@ -584,10 +536,7 @@ elif selected == "Laporan Rekap":
             
             st.divider()
 
-            # 2. TABEL DETAIL PER KARYAWAN
-            # Pivot table: Index=NIK, Column=Jenis, Value=Durasi (SUM)
             pivot_absen = fil.pivot_table(index='NIK', columns='Jenis', values='Durasi', aggfunc='sum', fill_value=0).reset_index()
-            
             cols = df_employees.columns
             cnik = next((c for c in cols if 'NIK' in c.upper()), cols[0])
             cnm = next((c for c in cols if 'NAMA' in c.upper()), cols[1])
@@ -598,21 +547,16 @@ elif selected == "Laporan Rekap":
             
             mst.columns = ['NIK', 'Nama', 'Departemen']
             mst['NIK'] = mst['NIK'].astype(str); pivot_absen['NIK'] = pivot_absen['NIK'].astype(str)
-            
             fin = pd.merge(mst, pivot_absen, on='NIK', how='left')
             
-            # Pastikan kolom kategori ada semua (walaupun 0)
             for cat in categories:
-                if cat not in fin.columns:
-                    fin[cat] = 0
+                if cat not in fin.columns: fin[cat] = 0
             fin = fin.fillna(0)
             
-            # Hitung Total Absen & Hadir
             fin['Total_Absen'] = fin[categories].sum(axis=1)
             fin['Total_Hadir'] = (hk - fin['Total_Absen']).clip(lower=0)
             fin['Persentase'] = ((fin['Total_Hadir']/hk)*100).round(1).astype(str) + '%'
             
-            # Urutkan Kolom
             final_cols = ['NIK', 'Nama', 'Departemen'] + categories + ['Total_Absen', 'Total_Hadir', 'Persentase']
             fin = fin[final_cols]
             
@@ -623,11 +567,9 @@ elif selected == "Laporan Rekap":
             
             st.divider()
             
-            # Grafik Bawah
             if not fil.empty:
                 g1, g2 = st.columns(2)
                 with g1:
-                    # Pie Chart Total per Jenis
                     df_pie = rekap_jenis.reset_index()
                     df_pie.columns = ['Jenis', 'Total Hari']
                     fig = px.pie(df_pie, names='Jenis', values='Total Hari', title="Proporsi Ketidakhadiran (Hari)", hole=0.4, template="plotly_dark")
