@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import io
 import plotly.express as px
-from datetime import datetime
+from datetime import datetime, timedelta
 from openpyxl import load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -13,7 +13,7 @@ from streamlit_option_menu import option_menu
 # 1. KONFIGURASI HALAMAN
 # ==========================================
 st.set_page_config(
-    page_title="DASHBOARD HR",
+    page_title="HRIS Dark Pro",
     layout="wide",
     page_icon="🚀",
     initial_sidebar_state="expanded"
@@ -24,27 +24,38 @@ st.set_page_config(
 # ==========================================
 st.markdown("""
     <style>
+    /* Background & Sidebar */
     .stApp { background-color: #0f172a; color: #f8fafc; }
     section[data-testid="stSidebar"] { background-color: #1e293b; border-right: 1px solid #334155; }
+    
+    /* Kartu Metric */
     div[data-testid="metric-container"] {
         background-color: #1e293b; border: 1px solid #334155;
         padding: 15px; border-radius: 10px; color: white;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); transition: 0.3s;
     }
     div[data-testid="metric-container"]:hover { border-color: #3b82f6; transform: translateY(-5px); }
-    div[data-testid="metric-container"] label { color: #94a3b8; }
-    div[data-testid="metric-container"] div[data-testid="stMetricValue"] { color: #38bdf8; }
+    div[data-testid="metric-container"] label { color: #94a3b8; font-size: 0.8rem; }
+    div[data-testid="metric-container"] div[data-testid="stMetricValue"] { color: #38bdf8; font-size: 1.5rem; }
+
+    /* Tabel Editor */
     div[data-testid="stDataEditor"] { background-color: #1e293b; border: 1px solid #475569; border-radius: 10px; }
     th { background-color: #020617 !important; color: #38bdf8 !important; border-bottom: 2px solid #334155 !important; text-align: center !important; }
     td { color: #e2e8f0 !important; background-color: #1e293b !important; text-align: center !important; }
+
+    /* Input Fields */
     .stTextInput input, .stSelectbox, .stNumberInput input, .stDateInput input, .stTextArea textarea {
         background-color: #334155 !important; color: white !important; border: 1px solid #475569 !important; border-radius: 5px;
     }
+    
+    /* Tombol */
     .stButton button { width: 100%; border-radius: 8px; font-weight: bold; border: none; padding: 10px; }
     button[kind="primary"] { background-color: #3b82f6; color: white; }
     button[kind="primary"]:hover { background-color: #2563eb; }
     button[kind="secondary"] { background-color: #ef4444; color: white; border: 1px solid #dc2626; }
     button[kind="secondary"]:hover { background-color: #dc2626; }
+
+    /* Expander */
     .streamlit-expanderHeader { background-color: #1e293b !important; color: white !important; border: 1px solid #334155; }
     </style>
 """, unsafe_allow_html=True)
@@ -55,26 +66,17 @@ st.markdown("""
 FILE_EMP = 'data_karyawan.csv'
 FILE_ATT = 'data_absensi.csv'
 DEFAULT_COLS = ['PT', 'NIK', 'Nama', 'Jabatan', 'Departemen']
+ATT_COLS = ['Tanggal', 'NIK', 'Nama', 'Departemen', 'Jenis', 'Keterangan', 'Waktu_Input', 'Durasi']
 
 def clean_dataframe(df):
     """Pembersih DataFrame Ultimate"""
-    # 1. Pastikan nama kolom string
     df.columns = [str(c).strip() for c in df.columns]
-    
-    # 2. Hapus kolom 'Unnamed', 'nan', atau kosong
-    # Menggunakan list comprehension untuk memfilter kolom yang valid saja
     valid_cols = [c for c in df.columns if 'UNNAMED' not in c.upper() and c != '' and c.lower() != 'nan']
     df = df[valid_cols]
-    
-    # 3. Hapus kolom helper sisa
     drop_list = ['No', 'Ceklist', 'Pilih']
     for col in drop_list:
-        if col in df.columns:
-            df = df.drop(columns=[col])
-            
-    # 4. Hapus kolom yang isinya kosong semua (All NaN)
+        if col in df.columns: df = df.drop(columns=[col])
     df = df.dropna(axis=1, how='all')
-            
     return df
 
 def load_data():
@@ -90,8 +92,9 @@ def load_data():
         try:
             df_att = pd.read_csv(FILE_ATT, dtype=str)
             df_att = clean_dataframe(df_att)
-        except: df_att = pd.DataFrame(columns=['Tanggal', 'NIK', 'Nama', 'Departemen', 'Jenis', 'Keterangan', 'Waktu_Input'])
-    else: df_att = pd.DataFrame(columns=['Tanggal', 'NIK', 'Nama', 'Departemen', 'Jenis', 'Keterangan', 'Waktu_Input'])
+            if 'Durasi' not in df_att.columns: df_att['Durasi'] = 1
+        except: df_att = pd.DataFrame(columns=ATT_COLS)
+    else: df_att = pd.DataFrame(columns=ATT_COLS)
     
     return df, df_att
 
@@ -105,8 +108,7 @@ def update_original_excel(original_file, df_new, sheet_name, start_row):
     try:
         original_file.seek(0)
         wb = load_workbook(original_file)
-        if sheet_name not in wb.sheetnames:
-            return None, f"Sheet '{sheet_name}' tidak ditemukan."
+        if sheet_name not in wb.sheetnames: return None, f"Sheet '{sheet_name}' tidak ditemukan."
         ws = wb[sheet_name]
         
         clean_df = clean_dataframe(df_new)
@@ -165,10 +167,11 @@ def create_colorful_excel(df, title_text):
 df_employees, df_attendance = load_data()
 
 # ==========================================
-# 4. SIDEBAR MENU
+# 4. SIDEBAR NAVIGATION
 # ==========================================
 with st.sidebar:
-    st.markdown("<h1 style='text-align: center; color: #38bdf8;'>⚡ DASHBOARD HR</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: #38bdf8;'>⚡ HRIS PRO</h1>", unsafe_allow_html=True)
+    
     selected = option_menu(
         menu_title=None,
         options=["Dashboard Karyawan", "Input Absensi", "Laporan Rekap"],
@@ -181,6 +184,12 @@ with st.sidebar:
             "nav-link-selected": {"background-color": "#3b82f6", "color": "white"},
         }
     )
+    
+    st.markdown("---")
+    if st.button("🚪 Logout", type="secondary"):
+        st.session_state['logged_in'] = False
+        st.rerun()
+        
     st.markdown("---")
     st.caption("Mode: Dark Premium")
 
@@ -195,6 +204,9 @@ if selected == "Dashboard Karyawan":
     if 'sheet_name_template' not in st.session_state: st.session_state['sheet_name_template'] = ""
     if 'header_row_template' not in st.session_state: st.session_state['header_row_template'] = 6
     if 'show_download' not in st.session_state: st.session_state['show_download'] = False
+    
+    if 'editor_key_emp' not in st.session_state: st.session_state['editor_key_emp'] = 0
+    if 'confirm_del_emp' not in st.session_state: st.session_state['confirm_del_emp'] = False
 
     if not df_employees.empty:
         m1, m2, m3, m4 = st.columns(4)
@@ -215,14 +227,14 @@ if selected == "Dashboard Karyawan":
                     d_cnt = df_employees['Departemen'].value_counts().head(10).reset_index()
                     d_cnt.columns = ['Departemen', 'Jumlah']
                     fig = px.bar(d_cnt, x='Departemen', y='Jumlah', color='Departemen', title="Top 10 Departemen", template='plotly_dark')
-                    fig.update_layout(showlegend=False, height=320, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                    fig.update_layout(showlegend=False, height=350, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                     st.plotly_chart(fig, use_container_width=True)
             with c2:
                 if has_jab:
                     j_cnt = df_employees['Jabatan'].value_counts().head(10).reset_index()
                     j_cnt.columns = ['Jabatan', 'Jumlah']
                     fig = px.pie(j_cnt, names='Jabatan', values='Jumlah', title="Top 10 Jabatan", hole=0.5, template='plotly_dark')
-                    fig.update_layout(height=320, paper_bgcolor='rgba(0,0,0,0)')
+                    fig.update_layout(height=350, paper_bgcolor='rgba(0,0,0,0)')
                     st.plotly_chart(fig, use_container_width=True)
         st.divider()
 
@@ -242,7 +254,6 @@ if selected == "Dashboard Karyawan":
                     
                     if st.button("Load Data", type="primary"):
                         df = pd.read_excel(up_file, sheet_name=sh, header=rw-1, dtype=str)
-                        # Smart Mapping
                         df.columns = [str(c).strip().upper() for c in df.columns]
                         rename_map = {
                             "NO. INDUK": "NIK", "NIK/NRP": "NIK", "NO INDUK": "NIK",
@@ -252,10 +263,7 @@ if selected == "Dashboard Karyawan":
                             "PT": "PT", "PERUSAHAAN": "PT", "ENTITY": "PT", "PT BARU": "PT"
                         }
                         df.rename(columns=rename_map, inplace=True)
-                        
-                        # --- PEMBERSIH SUPER ---
                         df = clean_dataframe(df)
-                        
                         df.dropna(how='all', inplace=True)
                         if 'NIK' in df.columns: 
                             df = df[df['NIK'].notna()]
@@ -264,6 +272,7 @@ if selected == "Dashboard Karyawan":
                         df_employees = df; save_data(df_employees, df_attendance)
                         st.session_state['sheet_name_template'] = sh; st.session_state['header_row_template'] = rw
                         st.session_state['show_download'] = False
+                        st.session_state['editor_key_emp'] += 1 
                         st.success(f"Loaded {len(df)} rows."); st.rerun()
                 except Exception as e: st.error(f"Error: {e}")
 
@@ -278,7 +287,9 @@ if selected == "Dashboard Karyawan":
                 if st.form_submit_button("Simpan"):
                     if any(v.values()):
                         df_employees = pd.concat([df_employees, pd.DataFrame([v])], ignore_index=True)
-                        save_data(df_employees, df_attendance); st.success("OK"); st.rerun()
+                        save_data(df_employees, df_attendance)
+                        st.session_state['editor_key_emp'] += 1 
+                        st.success("OK"); st.rerun()
 
     if not df_employees.empty:
         st.subheader("📝 Editor Data & Hapus")
@@ -296,7 +307,8 @@ if selected == "Dashboard Karyawan":
             use_container_width=True, 
             hide_index=True, 
             height=450,
-            column_config={"Pilih": st.column_config.CheckboxColumn("Hapus?", width="small")}
+            column_config={"Pilih": st.column_config.CheckboxColumn("Hapus?", width="small")},
+            key=f"editor_emp_{st.session_state['editor_key_emp']}"
         )
         
         b1, b2, b3 = st.columns([1, 1, 3])
@@ -316,13 +328,9 @@ if selected == "Dashboard Karyawan":
                 if search:
                     st.warning("Hapus filter dulu.")
                 else:
-                    rows_to_keep = edited[edited['Pilih'] == False]
-                    final_df = rows_to_keep.drop(columns=['Pilih'])
-                    deleted_count = len(df_employees) - len(final_df)
-                    if deleted_count > 0:
-                        save_data(final_df, df_attendance)
-                        st.success(f"Dihapus: {deleted_count}!"); st.rerun()
-                    else: st.info("Pilih data dulu.")
+                    checked = edited[edited['Pilih'] == True]
+                    if checked.empty: st.info("Pilih data dulu.")
+                    else: st.session_state['confirm_del_emp'] = True
 
         with b3:
             if st.session_state.get('show_download', False):
@@ -335,19 +343,30 @@ if selected == "Dashboard Karyawan":
                             st.session_state['header_row_template']
                         )
                         if out_buffer:
-                            st.download_button(
-                                label="📥 Download File Update (Excel Asli)", 
-                                data=out_buffer, 
-                                file_name="SO_MUT_UPDATED.xlsx",
-                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                type="primary" 
-                            )
+                            st.download_button(label="📥 Download File Update (Excel Asli)", data=out_buffer, file_name="SO_MUT_UPDATED.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", type="primary")
                         else: st.error(status)
-                    except Exception as e:
-                        st.error(f"Error: {e}")
+                    except Exception as e: st.error(f"Error: {e}")
                 else:
                     xl = create_colorful_excel(df_employees, "DATABASE KARYAWAN")
                     st.download_button("📥 Download Excel Baru", xl, "Database.xlsx")
+
+        if st.session_state['confirm_del_emp']:
+            rows_to_delete = edited[edited['Pilih'] == True]
+            st.error(f"⚠️ HAPUS {len(rows_to_delete)} DATA PERMANEN?")
+            cy, cn = st.columns([1, 1])
+            with cy:
+                if st.button("✅ Ya, Hapus"):
+                    rows_to_keep = edited[edited['Pilih'] == False]
+                    final_df = rows_to_keep.drop(columns=['Pilih'])
+                    save_data(final_df, df_attendance)
+                    st.session_state['confirm_del_emp'] = False
+                    st.session_state['editor_key_emp'] += 1 
+                    st.success("Terhapus!"); st.rerun()
+            with cn:
+                if st.button("❌ Batal"):
+                    st.session_state['confirm_del_emp'] = False
+                    st.session_state['editor_key_emp'] += 1 
+                    st.rerun()
 
     else: st.info("Database kosong.")
 
@@ -357,6 +376,10 @@ if selected == "Dashboard Karyawan":
 elif selected == "Input Absensi":
     st.title("📝 Presensi Harian")
     st.markdown("---")
+    
+    if 'editor_key_att' not in st.session_state: st.session_state['editor_key_att'] = 0
+    if 'confirm_del_att' not in st.session_state: st.session_state['confirm_del_att'] = False
+
     if df_employees.empty: st.error("Database Kosong.")
     else:
         c1, c2 = st.columns([1, 2])
@@ -370,23 +393,45 @@ elif selected == "Input Absensi":
                 opts = [f"{r[cnik]} - {r[cnm]}" for _, r in mst.iterrows()]
                 
                 sel = st.selectbox("Karyawan:", opts)
-                jenis = st.radio("Status:", ["Sakit", "Izin", "Alpha", "Cuti"], horizontal=True)
-                tgl = st.date_input("Tanggal:", datetime.now())
-                ket = st.text_area("Ket:", height=80)
+                
+                # --- UPDATE JENIS ABSEN ---
+                opsi_absen = ["Sakit (Ada Surat)", "Sakit (Tanpa Surat)", "Izin Resmi", "Izin Tidak Resmi", "Cuti", "Alpha"]
+                jenis = st.selectbox("Keterangan Absen:", opsi_absen)
+                
+                st.markdown("**Rentang Waktu:**")
+                col_tgl1, col_tgl2 = st.columns(2)
+                with col_tgl1: tgl_mulai = st.date_input("Dari Tanggal:", datetime.now())
+                with col_tgl2: tgl_selesai = st.date_input("Sampai Tanggal:", datetime.now())
+                ket = st.text_area("Detail Keterangan:", height=80)
                 
                 if st.button("Simpan", type="primary", use_container_width=True):
-                    nik_val = sel.split(" - ")[0]
-                    nm_val = sel.split(" - ")[1]
-                    dpt_val = "-"
-                    cdep = next((c for c in cols if 'DEP' in c.upper()), None)
-                    if cdep:
-                        tmp = df_employees[df_employees[cnik] == nik_val]
-                        if not tmp.empty: dpt_val = tmp.iloc[0][cdep]
-                    
-                    new = {'Tanggal':tgl, 'NIK':nik_val, 'Nama':nm_val, 'Departemen':dpt_val, 
-                           'Jenis':jenis, 'Keterangan':ket, 'Waktu_Input':datetime.now().strftime("%Y-%m-%d %H:%M")}
-                    df_attendance = pd.concat([df_attendance, pd.DataFrame([new])], ignore_index=True)
-                    save_data(df_employees, df_attendance); st.success("Masuk!"); st.rerun()
+                    if tgl_selesai < tgl_mulai: st.error("❌ Tanggal Sampai tidak boleh lebih kecil.")
+                    else:
+                        nik_val = sel.split(" - ")[0]
+                        nm_val = sel.split(" - ")[1]
+                        dpt_val = "-"
+                        cdep = next((c for c in cols if 'DEP' in c.upper()), None)
+                        if cdep:
+                            tmp = df_employees[df_employees[cnik] == nik_val]
+                            if not tmp.empty: dpt_val = tmp.iloc[0][cdep]
+                        
+                        durasi_hari = (tgl_selesai - tgl_mulai).days + 1
+                        
+                        if durasi_hari > 1:
+                            tgl_str = f"{tgl_mulai.strftime('%Y-%m-%d')} s/d {tgl_selesai.strftime('%Y-%m-%d')}"
+                        else:
+                            tgl_str = tgl_mulai.strftime('%Y-%m-%d')
+
+                        new_row = {
+                            'Tanggal': tgl_str, 'NIK': nik_val, 'Nama': nm_val, 'Departemen': dpt_val, 
+                            'Jenis': jenis, 'Keterangan': ket, 'Durasi': durasi_hari,
+                            'Waktu_Input': datetime.now().strftime("%Y-%m-%d %H:%M")
+                        }
+                        
+                        df_attendance = pd.concat([df_attendance, pd.DataFrame([new_row])], ignore_index=True)
+                        save_data(df_employees, df_attendance)
+                        st.session_state['editor_key_att'] += 1 
+                        st.success(f"Berhasil! (Durasi: {durasi_hari} hari)"); st.rerun()
 
         with c2:
             st.subheader("Riwayat & Edit")
@@ -402,23 +447,42 @@ elif selected == "Input Absensi":
                         "Pilih": st.column_config.CheckboxColumn("Hapus?", width="small"),
                         "Waktu_Input": st.column_config.TextColumn("Waktu", disabled=True),
                         "Nama": st.column_config.TextColumn("Nama", disabled=True),
-                        "Jenis": st.column_config.TextColumn("Jenis", disabled=True)
-                    }
+                        "Jenis": st.column_config.TextColumn("Jenis", disabled=True),
+                        "Durasi": st.column_config.NumberColumn("Hari", disabled=True, width="small")
+                    },
+                    key=f"editor_att_{st.session_state['editor_key_att']}"
                 )
                 
                 col_del, col_space = st.columns([1, 3])
                 with col_del:
                     if st.button("🗑️ Hapus Data Terpilih", type="secondary"):
-                        rows_to_keep = edited_history[edited_history['Pilih'] == False]
-                        rows_to_keep = rows_to_keep.drop(columns=['Pilih'])
-                        df_attendance = rows_to_keep
-                        save_data(df_employees, df_attendance)
-                        st.success("Dihapus!"); st.rerun()
+                        checked = edited_history[edited_history['Pilih'] == True]
+                        if checked.empty: st.info("Pilih data dulu!")
+                        else: st.session_state['confirm_del_att'] = True
+
+                if st.session_state['confirm_del_att']:
+                    checked = edited_history[edited_history['Pilih'] == True]
+                    st.error(f"⚠️ HAPUS {len(checked)} DATA ABSENSI?")
+                    cy, cn = st.columns([1, 1])
+                    with cy:
+                        if st.button("✅ Ya, Hapus", key="del_att_yes"):
+                            rows_to_keep = edited_history[edited_history['Pilih'] == False]
+                            rows_to_keep = rows_to_keep.drop(columns=['Pilih'])
+                            df_attendance = rows_to_keep
+                            save_data(df_employees, df_attendance)
+                            st.session_state['confirm_del_att'] = False
+                            st.session_state['editor_key_att'] += 1 
+                            st.success("Terhapus!"); st.rerun()
+                    with cn:
+                        if st.button("❌ Batal", key="del_att_no"):
+                            st.session_state['confirm_del_att'] = False
+                            st.session_state['editor_key_att'] += 1 
+                            st.rerun()
             else: 
                 st.info("Belum ada data absensi.")
 
 # ==========================================
-# 7. REKAP LAPORAN
+# 8. REKAP LAPORAN
 # ==========================================
 elif selected == "Laporan Rekap":
     st.title("📊 Laporan Bulanan")
@@ -432,13 +496,33 @@ elif selected == "Laporan Rekap":
         
         df_att_show = df_attendance.copy()
         if not df_att_show.empty:
-            df_att_show['Tanggal'] = pd.to_datetime(df_att_show['Tanggal'])
-            mask = (df_att_show['Tanggal'].dt.month == bln) & (df_att_show['Tanggal'].dt.year == thn)
+            # Filter Tanggal (Parse String)
+            df_att_show['Tgl_Filter'] = df_att_show['Tanggal'].astype(str).str.slice(0, 10)
+            df_att_show['Tgl_Filter'] = pd.to_datetime(df_att_show['Tgl_Filter'], errors='coerce')
+            
+            mask = (df_att_show['Tgl_Filter'].dt.month == bln) & (df_att_show['Tgl_Filter'].dt.year == thn)
             fil = df_att_show[mask]
             
-            c4.metric("Total Absen", len(fil))
+            # 1. METRICS ATAS (BREAKDOWN)
+            fil['Durasi'] = pd.to_numeric(fil['Durasi'], errors='coerce').fillna(1)
             
-            abs_cnt = fil.groupby('NIK').size().reset_index(name='Total_Absen')
+            # Hitung total durasi per kategori
+            rekap_jenis = fil.groupby('Jenis')['Durasi'].sum()
+            
+            # Tampilkan 6 Kotak Metric
+            m_cols = st.columns(6)
+            categories = ["Sakit (Ada Surat)", "Sakit (Tanpa Surat)", "Izin Resmi", "Izin Tidak Resmi", "Cuti", "Alpha"]
+            
+            for i, cat in enumerate(categories):
+                val = rekap_jenis.get(cat, 0)
+                m_cols[i].metric(cat, int(val))
+            
+            st.divider()
+
+            # 2. TABEL DETAIL PER KARYAWAN
+            # Pivot table: Index=NIK, Column=Jenis, Value=Durasi (SUM)
+            pivot_absen = fil.pivot_table(index='NIK', columns='Jenis', values='Durasi', aggfunc='sum', fill_value=0).reset_index()
+            
             cols = df_employees.columns
             cnik = next((c for c in cols if 'NIK' in c.upper()), cols[0])
             cnm = next((c for c in cols if 'NAMA' in c.upper()), cols[1])
@@ -448,11 +532,24 @@ elif selected == "Laporan Rekap":
             else: mst = df_employees[[cnik, cnm]].drop_duplicates(); mst['Departemen'] = "-"
             
             mst.columns = ['NIK', 'Nama', 'Departemen']
-            mst['NIK'] = mst['NIK'].astype(str); abs_cnt['NIK'] = abs_cnt['NIK'].astype(str)
-            fin = pd.merge(mst, abs_cnt, on='NIK', how='left')
-            fin['Total_Absen'] = fin['Total_Absen'].fillna(0).astype(int)
+            mst['NIK'] = mst['NIK'].astype(str); pivot_absen['NIK'] = pivot_absen['NIK'].astype(str)
+            
+            fin = pd.merge(mst, pivot_absen, on='NIK', how='left')
+            
+            # Pastikan kolom kategori ada semua (walaupun 0)
+            for cat in categories:
+                if cat not in fin.columns:
+                    fin[cat] = 0
+            fin = fin.fillna(0)
+            
+            # Hitung Total Absen & Hadir
+            fin['Total_Absen'] = fin[categories].sum(axis=1)
             fin['Total_Hadir'] = (hk - fin['Total_Absen']).clip(lower=0)
             fin['Persentase'] = ((fin['Total_Hadir']/hk)*100).round(1).astype(str) + '%'
+            
+            # Urutkan Kolom
+            final_cols = ['NIK', 'Nama', 'Departemen'] + categories + ['Total_Absen', 'Total_Hadir', 'Persentase']
+            fin = fin[final_cols]
             
             st.dataframe(fin, use_container_width=True, hide_index=True)
             
@@ -460,16 +557,20 @@ elif selected == "Laporan Rekap":
             st.download_button("📥 Download Laporan (Excel)", xl, f"Rekap_{bln}_{thn}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", type="primary")
             
             st.divider()
+            
+            # Grafik Bawah
             if not fil.empty:
                 g1, g2 = st.columns(2)
                 with g1:
-                    pc = fil['Jenis'].value_counts().reset_index(); pc.columns=['Jenis','Jml']
-                    fig = px.pie(pc, names='Jenis', values='Jml', title="Proporsi Izin", hole=0.4, template="plotly_dark")
+                    # Pie Chart Total per Jenis
+                    df_pie = rekap_jenis.reset_index()
+                    df_pie.columns = ['Jenis', 'Total Hari']
+                    fig = px.pie(df_pie, names='Jenis', values='Total Hari', title="Proporsi Ketidakhadiran (Hari)", hole=0.4, template="plotly_dark")
                     fig.update_layout(paper_bgcolor='rgba(0,0,0,0)')
                     st.plotly_chart(fig, use_container_width=True)
                 with g2:
                     top = fin[fin['Total_Absen']>0].sort_values('Total_Absen', ascending=False).head(5)
-                    fig = px.bar(top, x='Total_Absen', y='Nama', orientation='h', title="Top 5 Absen", template="plotly_dark")
+                    fig = px.bar(top, x='Total_Absen', y='Nama', orientation='h', title="Top 5 Paling Sering Absen", template="plotly_dark")
                     fig.update_layout(paper_bgcolor='rgba(0,0,0,0)')
                     st.plotly_chart(fig, use_container_width=True)
         else: st.info("Belum ada data absensi.")
