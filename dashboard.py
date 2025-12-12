@@ -20,7 +20,71 @@ st.set_page_config(
 )
 
 # ==========================================
-# 2. CSS DARK MODE PREMIUM
+# 2. SISTEM LOGIN (SECURITY)
+# ==========================================
+# Daftar Pengguna (Username: Password)
+USERS = {
+    "admin": "kiki",
+    "hrd": "aan",
+    "boss": "adit"
+}
+
+def check_login(username, password):
+    """Cek apakah username dan password valid"""
+    if username in USERS and USERS[username] == password:
+        return True
+    return False
+
+# Inisialisasi status login
+if 'logged_in' not in st.session_state:
+    st.session_state['logged_in'] = False
+
+# --- TAMPILAN HALAMAN LOGIN ---
+if not st.session_state['logged_in']:
+    # CSS Khusus Login agar di tengah
+    st.markdown("""
+        <style>
+        .stApp { background-color: #0f172a; color: white; }
+        div.stButton > button { width: 100%; background-color: #3b82f6; color: white; border: none; padding: 10px; border-radius: 5px; }
+        div.stButton > button:hover { background-color: #2563eb; }
+        .login-box {
+            padding: 2rem;
+            border-radius: 10px;
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            max-width: 400px;
+            margin: auto;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Layout Login Tengah
+    col1, col2, col3 = st.columns([1, 1, 1])
+    
+    with col2:
+        st.markdown("<br><br><br>", unsafe_allow_html=True) # Spacer
+        st.markdown("<h1 style='text-align: center;'>🔐 Dashboard HR Login</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #94a3b8;'>Silakan masuk untuk mengakses dashboard</p>", unsafe_allow_html=True)
+        
+        with st.form("login_form"):
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+            submitted = st.form_submit_button("Masuk / Login")
+            
+            if submitted:
+                if check_login(username, password):
+                    st.session_state['logged_in'] = True
+                    st.success("Login Berhasil!")
+                    st.rerun()
+                else:
+                    st.error("Username atau Password salah!")
+    
+    # Hentikan program di sini jika belum login (Dashboard di bawah tidak akan dimuat)
+    st.stop()
+
+# ==========================================
+# 3. CSS DASHBOARD (DIMUAT SETELAH LOGIN)
 # ==========================================
 st.markdown("""
     <style>
@@ -61,7 +125,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. BACKEND LOGIC
+# 4. BACKEND LOGIC (DATA)
 # ==========================================
 FILE_EMP = 'data_karyawan.csv'
 FILE_ATT = 'data_absensi.csv'
@@ -167,7 +231,7 @@ def create_colorful_excel(df, title_text):
 df_employees, df_attendance = load_data()
 
 # ==========================================
-# 4. SIDEBAR NAVIGATION
+# 5. SIDEBAR NAVIGATION
 # ==========================================
 with st.sidebar:
     st.markdown("<h1 style='text-align: center; color: #38bdf8;'>⚡ DASHBOARD HR</h1>", unsafe_allow_html=True)
@@ -186,6 +250,7 @@ with st.sidebar:
     )
     
     st.markdown("---")
+    # Tombol Logout
     if st.button("🚪 Logout", type="secondary"):
         st.session_state['logged_in'] = False
         st.rerun()
@@ -194,7 +259,7 @@ with st.sidebar:
     st.caption("Mode: Dark Premium")
 
 # ==========================================
-# 5. DASHBOARD KARYAWAN
+# 6. MENU 1: DASHBOARD KARYAWAN
 # ==========================================
 if selected == "Dashboard Karyawan":
     st.title("📂 Database Karyawan")
@@ -209,6 +274,7 @@ if selected == "Dashboard Karyawan":
     if 'confirm_del_emp' not in st.session_state: st.session_state['confirm_del_emp'] = False
 
     if not df_employees.empty:
+        # Metrics
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Total Pegawai", len(df_employees))
         dept_num = df_employees['Departemen'].nunique() if 'Departemen' in df_employees.columns else 0
@@ -218,6 +284,7 @@ if selected == "Dashboard Karyawan":
         m4.metric("Status", "Active")
         st.write("")
         
+        # Charts
         has_dept = 'Departemen' in df_employees.columns
         has_jab = 'Jabatan' in df_employees.columns
         if has_dept or has_jab:
@@ -371,7 +438,7 @@ if selected == "Dashboard Karyawan":
     else: st.info("Database kosong.")
 
 # ==========================================
-# 6. INPUT ABSENSI
+# 7. INPUT ABSENSI
 # ==========================================
 elif selected == "Input Absensi":
     st.title("📝 Presensi Harian")
@@ -393,8 +460,6 @@ elif selected == "Input Absensi":
                 opts = [f"{r[cnik]} - {r[cnm]}" for _, r in mst.iterrows()]
                 
                 sel = st.selectbox("Karyawan:", opts)
-                
-                # --- UPDATE JENIS ABSEN ---
                 opsi_absen = ["Sakit (Ada Surat)", "Sakit (Tanpa Surat)", "Izin Resmi", "Izin Tidak Resmi", "Cuti", "Alpha"]
                 jenis = st.selectbox("Keterangan Absen:", opsi_absen)
                 
