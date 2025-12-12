@@ -13,9 +13,9 @@ from streamlit_option_menu import option_menu
 # 1. KONFIGURASI HALAMAN
 # ==========================================
 st.set_page_config(
-    page_title="HRIS Dark Pro",
+    page_title="DASHBOARD HR",
     layout="wide",
-    page_icon="🚀",
+    page_icon="📊",
     initial_sidebar_state="expanded"
 )
 
@@ -170,7 +170,7 @@ df_employees, df_attendance = load_data()
 # 4. SIDEBAR NAVIGATION
 # ==========================================
 with st.sidebar:
-    st.markdown("<h1 style='text-align: center; color: #38bdf8;'>⚡ HRIS PRO</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: #38bdf8;'>⚡ DASHBOARD HR</h1>", unsafe_allow_html=True)
     
     selected = option_menu(
         menu_title=None,
