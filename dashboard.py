@@ -22,10 +22,12 @@ st.set_page_config(
 # ==========================================
 # 2. SISTEM LOGIN (SECURITY)
 # ==========================================
+# 👇 SILAKAN GANTI USERNAME DAN PASSWORD DI BAWAH INI 👇
+# Format: "username": "password"
 USERS = {
-    "admin": "kiki",
-    "hrd": "aan",
-    "boss": "adit"
+    "kiki": "kiki123",       # Username: admin, Pass: 12345
+    "pipin": "pipin123",     # Username: hrd, Pass: 54321
+    "adit": "adit123"        # Username: pimpinan, Pass: bos123
 }
 
 def check_login(username, password):
@@ -44,6 +46,9 @@ if not st.session_state['logged_in']:
         .login-box { padding: 40px; background: rgba(30, 41, 59, 0.7); border-radius: 20px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
         .stTextInput input { background-color: rgba(15, 23, 42, 0.6) !important; color: white !important; border: 1px solid #475569 !important; border-radius: 10px; }
         .stButton button { width: 100%; background: linear-gradient(90deg, #3b82f6, #2563eb); color: white; border: none; padding: 12px; border-radius: 30px; font-weight: bold; }
+        
+        /* Hilangkan instruksi 'Press Enter' */
+        [data-testid="stForm"] span[data-testid="InputInstructions"] { display: none; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -54,6 +59,7 @@ if not st.session_state['logged_in']:
         with st.form("login_form"):
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
+            st.markdown("<br>", unsafe_allow_html=True)
             if st.form_submit_button("MASUK"):
                 if check_login(username, password):
                     st.session_state['logged_in'] = True
@@ -74,11 +80,20 @@ st.markdown("""
     div[data-testid="metric-container"] div[data-testid="stMetricValue"] { color: #38bdf8; }
     th { background-color: #020617 !important; color: #38bdf8 !important; border-bottom: 2px solid #334155 !important; text-align: center !important; }
     td { color: #e2e8f0 !important; background-color: #1e293b !important; text-align: center !important; }
-    .stTextInput input, .stSelectbox, .stNumberInput input, .stDateInput input, .stTextArea textarea { background-color: #334155 !important; color: white !important; border: 1px solid #475569 !important; border-radius: 5px; }
+    
+    .stTextInput input, .stNumberInput input, .stDateInput input, .stTextArea textarea { 
+        background-color: #334155 !important; color: white !important; border: 1px solid #475569 !important; border-radius: 5px; 
+    }
+    div[data-testid="stSelectbox"] > div > div {
+        background-color: #334155 !important; color: white !important; border: 1px solid #475569 !important; border-radius: 5px;
+    }
+    div[data-testid="stSelectbox"] div[data-testid="stMarkdownContainer"] p { color: white !important; }
+
     .stButton button { width: 100%; border-radius: 8px; font-weight: bold; border: none; padding: 10px; }
     button[kind="primary"] { background-color: #3b82f6; color: white; }
     button[kind="secondary"] { background-color: #ef4444; color: white; border: 1px solid #dc2626; }
     .streamlit-expanderHeader { background-color: #1e293b !important; color: white !important; border: 1px solid #334155; }
+    [data-testid="stForm"] span[data-testid="InputInstructions"] { display: none; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -91,24 +106,14 @@ DEFAULT_COLS = ['PT', 'NIK', 'Nama', 'Jabatan', 'Departemen']
 ATT_COLS = ['Tanggal', 'NIK', 'Nama', 'Departemen', 'Jenis', 'Keterangan', 'Waktu_Input', 'Durasi']
 
 def clean_dataframe(df):
-    # 1. Bersihkan Nama Kolom
     df.columns = [str(c).strip() for c in df.columns]
-    
-    # 2. Buang kolom Unnamed/Kosong
     valid_cols = [c for c in df.columns if 'UNNAMED' not in c.upper() and c != '' and c.lower() != 'nan']
     df = df[valid_cols]
-    
-    # 3. Buang kolom helper
     for col in ['No', 'Ceklist', 'Pilih']:
         if col in df.columns: df = df.drop(columns=[col])
-    
-    # 4. ISI KOSONG DENGAN "-" (Supaya baris tidak terhapus)
     df = df.fillna("-")
-    
-    # 5. Hapus baris yang BENAR-BENAR KOSONG SEMUA (Hantu)
     temp_df = df.replace("-", None)
     df = df[temp_df.notna().any(axis=1)]
-    
     return df
 
 def load_data():
@@ -139,7 +144,7 @@ def save_data(df, df_att):
 def update_original_excel(original_file, df_new, sheet_name, start_row):
     try:
         original_file.seek(0)
-        wb = load_workbook(original_file)
+        wb = load_workbook(io.BytesIO(original_file.getvalue()))
         if sheet_name not in wb.sheetnames: return None, f"Sheet '{sheet_name}' tidak ditemukan."
         ws = wb[sheet_name]
         clean_df = clean_dataframe(df_new)
@@ -228,7 +233,6 @@ if selected == "Dashboard Karyawan":
     if 'confirm_del_emp' not in st.session_state: st.session_state['confirm_del_emp'] = False
 
     if not df_employees.empty:
-        # Metrics
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Total Pegawai", len(df_employees))
         dept_num = df_employees['Departemen'].nunique() if 'Departemen' in df_employees.columns else 0
@@ -238,7 +242,6 @@ if selected == "Dashboard Karyawan":
         m4.metric("Status", "Active")
         st.write("")
         
-        # Charts (TOP 10)
         has_dept = 'Departemen' in df_employees.columns
         has_jab = 'Jabatan' in df_employees.columns
         if has_dept or has_jab:
@@ -272,14 +275,10 @@ if selected == "Dashboard Karyawan":
                         if "DATABASE SESUAI SO".lower() in n.lower(): idx = i; break
                     sh = st.selectbox("Sheet:", xls.sheet_names, index=idx)
                     
-                    # --- INPUT HEADER ROW DIKEMBALIKAN ---
-                    # Default 6 (Sesuai File SO MUT), tapi bisa diganti user
                     rw = st.number_input("Header Baris ke:", min_value=1, value=6, help="Baris di Excel dimana nama kolom berada")
                     
                     if st.button("Load Data", type="primary"):
-                        # Baca data dari Header yang ditentukan user
                         df = pd.read_excel(up_file, sheet_name=sh, header=rw-1, dtype=str)
-                        
                         df.columns = [str(c).strip().upper() for c in df.columns]
                         rename_map = {
                             "NO. INDUK": "NIK", "NIK/NRP": "NIK", "NO INDUK": "NIK",
@@ -289,10 +288,7 @@ if selected == "Dashboard Karyawan":
                             "PT": "PT", "PERUSAHAAN": "PT", "ENTITY": "PT", "PT BARU": "PT"
                         }
                         df.rename(columns=rename_map, inplace=True)
-                        
-                        # CLEAN DATAFRAME (TANPA MENGHAPUS BARIS KOSONG)
                         df = clean_dataframe(df)
-                        
                         df_employees = df; save_data(df_employees, df_attendance)
                         st.session_state['sheet_name_template'] = sh; st.session_state['header_row_template'] = rw
                         st.session_state['show_download'] = False
@@ -395,7 +391,7 @@ if selected == "Dashboard Karyawan":
     else: st.info("Database kosong.")
 
 # ==========================================
-# 6. INPUT ABSENSI (SINGLE ROW LOGIC)
+# 6. INPUT ABSENSI
 # ==========================================
 elif selected == "Input Absensi":
     st.title("📝 Presensi Harian")
@@ -417,7 +413,9 @@ elif selected == "Input Absensi":
                 opts = [f"{r[cnik]} - {r[cnm]}" for _, r in mst.iterrows()]
                 
                 sel = st.selectbox("Karyawan:", opts)
-                opsi_absen = ["Sakit (Ada Surat)", "Sakit (Tanpa Surat)", "Izin Resmi", "Izin Tidak Resmi", "Cuti", "Alpha"]
+                
+                # --- UPDATE NAMA IZIN PAKAI KURUNG ---
+                opsi_absen = ["Sakit (Ada Surat)", "Sakit (Tanpa Surat)", "Izin (Resmi)", "Izin (Tidak Resmi)", "Cuti", "Alpha"]
                 jenis = st.selectbox("Keterangan Absen:", opsi_absen)
                 
                 st.markdown("**Rentang Waktu:**")
@@ -528,7 +526,9 @@ elif selected == "Laporan Rekap":
             rekap_jenis = fil.groupby('Jenis')['Durasi'].sum()
             
             m_cols = st.columns(6)
-            categories = ["Sakit (Ada Surat)", "Sakit (Tanpa Surat)", "Izin Resmi", "Izin Tidak Resmi", "Cuti", "Alpha"]
+            
+            # --- UPDATE KATEGORI AGAR SESUAI DENGAN INPUT ---
+            categories = ["Sakit (Ada Surat)", "Sakit (Tanpa Surat)", "Izin (Resmi)", "Izin (Tidak Resmi)", "Cuti", "Alpha"]
             
             for i, cat in enumerate(categories):
                 val = rekap_jenis.get(cat, 0)
@@ -541,11 +541,22 @@ elif selected == "Laporan Rekap":
             cnik = next((c for c in cols if 'NIK' in c.upper()), cols[0])
             cnm = next((c for c in cols if 'NAMA' in c.upper()), cols[1])
             cdep = next((c for c in cols if 'DEP' in c.upper()), None)
+            cpt = next((c for c in cols if 'PT' in c.upper()), None)
             
-            if cdep: mst = df_employees[[cnik, cnm, cdep]].drop_duplicates()
-            else: mst = df_employees[[cnik, cnm]].drop_duplicates(); mst['Departemen'] = "-"
+            cols_to_fetch = [cnik, cnm]
+            if cdep: cols_to_fetch.append(cdep)
+            if cpt: cols_to_fetch.append(cpt)
             
-            mst.columns = ['NIK', 'Nama', 'Departemen']
+            mst = df_employees[cols_to_fetch].drop_duplicates()
+            
+            rename_map = {cnik: 'NIK', cnm: 'Nama'}
+            if cdep: rename_map[cdep] = 'Departemen'
+            if cpt: rename_map[cpt] = 'PT'
+            mst = mst.rename(columns=rename_map)
+            
+            if 'Departemen' not in mst.columns: mst['Departemen'] = "-"
+            if 'PT' not in mst.columns: mst['PT'] = "-"
+            
             mst['NIK'] = mst['NIK'].astype(str); pivot_absen['NIK'] = pivot_absen['NIK'].astype(str)
             fin = pd.merge(mst, pivot_absen, on='NIK', how='left')
             
@@ -557,7 +568,7 @@ elif selected == "Laporan Rekap":
             fin['Total_Hadir'] = (hk - fin['Total_Absen']).clip(lower=0)
             fin['Persentase'] = ((fin['Total_Hadir']/hk)*100).round(1).astype(str) + '%'
             
-            final_cols = ['NIK', 'Nama', 'Departemen'] + categories + ['Total_Absen', 'Total_Hadir', 'Persentase']
+            final_cols = ['PT', 'NIK', 'Nama', 'Departemen'] + categories + ['Total_Absen', 'Total_Hadir', 'Persentase']
             fin = fin[final_cols]
             
             st.dataframe(fin, use_container_width=True, hide_index=True)
