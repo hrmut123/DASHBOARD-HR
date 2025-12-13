@@ -19,7 +19,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ==========================================
+## ==========================================
 # 2. SISTEM LOGIN (SECURITY)
 # ==========================================
 # 👇 SILAKAN GANTI USERNAME DAN PASSWORD DI BAWAH INI 👇
@@ -38,11 +38,11 @@ def check_login(username, password):
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 
-# --- TAMPILAN LOGIN KEREN (FIXED LAYOUT) ---
+# --- TAMPILAN LOGIN (FIXED VISIBILITY) ---
 if not st.session_state['logged_in']:
     st.markdown("""
         <style>
-        /* Background Animasi Gradient */
+        /* Background Utama */
         .stApp {
             background: linear-gradient(-45deg, #0f172a, #1e293b, #0f172a, #2dd4bf);
             background-size: 400% 400%;
@@ -55,98 +55,99 @@ if not st.session_state['logged_in']:
             100% { background-position: 0% 50%; }
         }
 
-        /* TARGET FORM STREAMLIT LANGSUNG UNTUK EFEK KACA */
-        [data-testid="stForm"] {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
-        }
-
-        /* Judul & Logo di dalam Form */
-        .login-header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .login-icon { font-size: 4rem; margin-bottom: 5px; }
-        .login-title {
-            font-size: 2.5rem;
-            font-weight: 800;
-            background: -webkit-linear-gradient(45deg, #38bdf8, #818cf8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin: 0;
-        }
-        .login-subtitle {
-            color: #94a3b8;
-            font-size: 0.9rem;
-            margin-top: 5px;
-        }
-
-        /* Input Field */
+        /* PERBAIKAN: Input Field Solid & Kontras Tinggi */
         div[data-testid="stTextInput"] input {
-            background-color: rgba(15, 23, 42, 0.8) !important;
-            border: 1px solid #334155 !important;
-            color: #f8fafc !important;
+            background-color: #334155 !important; /* Warna Solid Biru Abu */
+            color: #ffffff !important; /* Teks Putih Mutlak */
+            -webkit-text-fill-color: #ffffff !important; /* Paksa Chrome/Safari Putih */
+            caret-color: #ffffff !important; /* Kursor Putih */
+            border: 2px solid #475569 !important;
             border-radius: 10px !important;
-            padding: 10px 15px !important;
+            padding: 15px !important;
+            font-size: 16px !important;
+            font-weight: 500 !important;
         }
+        
         div[data-testid="stTextInput"] input:focus {
             border-color: #38bdf8 !important;
-            box-shadow: 0 0 10px rgba(56, 189, 248, 0.3) !important;
+            background-color: #1e293b !important;
+        }
+        
+        /* Label Input (Username/Password) */
+        div[data-testid="stTextInput"] label {
+            color: #e2e8f0 !important;
+            font-size: 14px !important;
+            font-weight: bold !important;
         }
 
-        /* Tombol Login */
+        /* PERBAIKAN: Tombol Login Jelas */
         div.stButton > button {
-            background: linear-gradient(90deg, #3b82f6, #06b6d4);
-            color: white;
-            font-weight: bold;
-            border: none;
-            padding: 12px 0;
+            background-color: #2563eb !important; /* Warna Dasar Solid */
+            background-image: linear-gradient(90deg, #3b82f6, #06b6d4) !important;
+            color: #ffffff !important; /* Teks Putih */
+            -webkit-text-fill-color: #ffffff !important;
+            font-weight: 900 !important; /* Teks Tebal */
+            border: 1px solid white !important; /* Border Putih Tipis */
+            padding: 15px 0;
             border-radius: 50px;
             width: 100%;
-            margin-top: 10px;
-            transition: all 0.3s;
+            margin-top: 15px;
+            font-size: 18px;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
         div.stButton > button:hover {
             transform: scale(1.02);
-            box-shadow: 0 5px 15px rgba(6, 182, 212, 0.4);
+            box-shadow: 0 8px 15px rgba(6, 182, 212, 0.5);
         }
+        div.stButton > button p {
+            font-size: 18px !important;
+            color: white !important;
+        }
+
+        /* Container Judul */
+        .login-header { text-align: center; margin-bottom: 20px; }
+        .login-icon { font-size: 4rem; margin-bottom: 5px; text-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        .login-title {
+            font-size: 2.5rem; font-weight: 800; color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5); margin: 0;
+        }
+        .login-subtitle { color: #cbd5e1; font-size: 1rem; margin-top: 5px; }
 
         /* Hilangkan elemen pengganggu */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header {visibility: hidden;}
         [data-testid="stForm"] span[data-testid="InputInstructions"] { display: none; }
+        
+        /* Container Form Transparan (Hanya background luar) */
+        [data-testid="stForm"] {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 30px;
+            border-radius: 20px;
+        }
         </style>
     """, unsafe_allow_html=True)
 
-    # Layout Tengah
     col1, col2, col3 = st.columns([1, 1.2, 1])
     
     with col2:
-        st.markdown("<br><br>", unsafe_allow_html=True) # Spacer atas
+        st.markdown("<br><br>", unsafe_allow_html=True)
         
-        # FORM LOGIN (Visual dimasukkan ke dalam form agar menyatu)
         with st.form("login_form"):
-            # Header Visual (Icon & Judul)
             st.markdown("""
                 <div class="login-header">
                     <div class="login-icon">🔐</div>
                     <div class="login-title">DASHBOARD HR</div>
-                    <div class="login-subtitle">Silahkan Login</div>
+                    <div class="login-subtitle">System Authentication Portal</div>
                 </div>
             """, unsafe_allow_html=True)
             
-            username = st.text_input("Username", placeholder="ID Pengguna")
-            password = st.text_input("Password", type="password", placeholder="Kata Sandi")
+            username = st.text_input("Username", placeholder="Ketik Username...")
+            password = st.text_input("Password", type="password", placeholder="Ketik Password...")
             
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            # Tombol Submit
             submitted = st.form_submit_button("MASUK SYSTEM")
             
             if submitted:
@@ -157,9 +158,8 @@ if not st.session_state['logged_in']:
                 else:
                     st.error("⛔ Username atau Password Salah")
 
-        # Footer kecil di luar kotak
         st.markdown("""
-            <div style='text-align: center; margin-top: 20px; color: #475569; font-size: 12px;'>
+            <div style='text-align: center; margin-top: 20px; color: #94a3b8; font-size: 12px;'>
                 © 2025 HR Management System
             </div>
         """, unsafe_allow_html=True)
@@ -167,23 +167,19 @@ if not st.session_state['logged_in']:
     st.stop()
 
 # ==========================================
-# 3. CSS DASHBOARD UTAMA (SETELAH LOGIN)
+# 3. CSS DASHBOARD UTAMA
 # ==========================================
 st.markdown("""
     <style>
     .stApp { background-color: #0f172a; color: #f8fafc; }
     section[data-testid="stSidebar"] { background-color: #1e293b; border-right: 1px solid #334155; }
-    
-    /* Metrics */
     div[data-testid="metric-container"] { background-color: #1e293b; border: 1px solid #334155; padding: 15px; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
     div[data-testid="metric-container"] label { color: #94a3b8; }
     div[data-testid="metric-container"] div[data-testid="stMetricValue"] { color: #38bdf8; }
-    
-    /* Tabel */
     th { background-color: #020617 !important; color: #38bdf8 !important; border-bottom: 2px solid #334155 !important; text-align: center !important; }
     td { color: #e2e8f0 !important; background-color: #1e293b !important; text-align: center !important; }
     
-    /* Fix Warna Input & Selectbox */
+    /* Fix Input Dashboard */
     .stTextInput input, .stNumberInput input, .stDateInput input, .stTextArea textarea { 
         background-color: #334155 !important; color: white !important; border: 1px solid #475569 !important; border-radius: 5px; 
     }
@@ -192,13 +188,10 @@ st.markdown("""
     }
     div[data-testid="stSelectbox"] div[data-testid="stMarkdownContainer"] p { color: white !important; }
 
-    /* Tombol Dashboard */
     .stButton button { width: 100%; border-radius: 8px; font-weight: bold; border: none; padding: 10px; }
     button[kind="primary"] { background-color: #3b82f6; color: white; }
     button[kind="secondary"] { background-color: #ef4444; color: white; border: 1px solid #dc2626; }
     .streamlit-expanderHeader { background-color: #1e293b !important; color: white !important; border: 1px solid #334155; }
-    
-    /* Hilangkan instruksi form global */
     [data-testid="stForm"] span[data-testid="InputInstructions"] { display: none; }
     </style>
 """, unsafe_allow_html=True)
@@ -633,7 +626,6 @@ elif selected == "Laporan Rekap":
             
             m_cols = st.columns(6)
             
-            # --- UPDATE KATEGORI AGAR SESUAI DENGAN INPUT ---
             categories = ["Sakit (Ada Surat)", "Sakit (Tanpa Surat)", "Izin (Resmi)", "Izin (Tidak Resmi)", "Cuti", "Alpha"]
             
             for i, cat in enumerate(categories):
