@@ -13,9 +13,9 @@ from streamlit_option_menu import option_menu
 # 1. KONFIGURASI HALAMAN
 # ==========================================
 st.set_page_config(
-    page_title="DASHBOARD HR",
+    page_title="HRIS PRO",
     layout="wide",
-    page_icon="📊",
+    page_icon="🚀",
     initial_sidebar_state="expanded"
 )
 
@@ -38,49 +38,152 @@ def check_login(username, password):
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 
-# --- TAMPILAN HALAMAN LOGIN ---
+# --- TAMPILAN LOGIN KEREN (FIXED LAYOUT) ---
 if not st.session_state['logged_in']:
     st.markdown("""
         <style>
-        .stApp { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; }
-        .login-box { padding: 40px; background: rgba(30, 41, 59, 0.7); border-radius: 20px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
-        .stTextInput input { background-color: rgba(15, 23, 42, 0.6) !important; color: white !important; border: 1px solid #475569 !important; border-radius: 10px; }
-        .stButton button { width: 100%; background: linear-gradient(90deg, #3b82f6, #2563eb); color: white; border: none; padding: 12px; border-radius: 30px; font-weight: bold; }
-        
-        /* Hilangkan instruksi 'Press Enter' */
+        /* Background Animasi Gradient */
+        .stApp {
+            background: linear-gradient(-45deg, #0f172a, #1e293b, #0f172a, #2dd4bf);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+            color: white;
+        }
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* TARGET FORM STREAMLIT LANGSUNG UNTUK EFEK KACA */
+        [data-testid="stForm"] {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Judul & Logo di dalam Form */
+        .login-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .login-icon { font-size: 4rem; margin-bottom: 5px; }
+        .login-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: -webkit-linear-gradient(45deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0;
+        }
+        .login-subtitle {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        /* Input Field */
+        div[data-testid="stTextInput"] input {
+            background-color: rgba(15, 23, 42, 0.8) !important;
+            border: 1px solid #334155 !important;
+            color: #f8fafc !important;
+            border-radius: 10px !important;
+            padding: 10px 15px !important;
+        }
+        div[data-testid="stTextInput"] input:focus {
+            border-color: #38bdf8 !important;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.3) !important;
+        }
+
+        /* Tombol Login */
+        div.stButton > button {
+            background: linear-gradient(90deg, #3b82f6, #06b6d4);
+            color: white;
+            font-weight: bold;
+            border: none;
+            padding: 12px 0;
+            border-radius: 50px;
+            width: 100%;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+        div.stButton > button:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(6, 182, 212, 0.4);
+        }
+
+        /* Hilangkan elemen pengganggu */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
         [data-testid="stForm"] span[data-testid="InputInstructions"] { display: none; }
         </style>
     """, unsafe_allow_html=True)
 
+    # Layout Tengah
     col1, col2, col3 = st.columns([1, 1.2, 1])
+    
     with col2:
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        st.markdown('<div class="login-box"><h1>🔐 HRIS PRO</h1><p>Silakan Login</p>', unsafe_allow_html=True)
+        st.markdown("<br><br>", unsafe_allow_html=True) # Spacer atas
+        
+        # FORM LOGIN (Visual dimasukkan ke dalam form agar menyatu)
         with st.form("login_form"):
-            username = st.text_input("Username")
-            password = st.text_input("Password", type="password")
+            # Header Visual (Icon & Judul)
+            st.markdown("""
+                <div class="login-header">
+                    <div class="login-icon">🚀</div>
+                    <div class="login-title">DASHBOARD HR</div>
+                    <div class="login-subtitle">Silahkan Login</div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            username = st.text_input("Username", placeholder="ID Pengguna")
+            password = st.text_input("Password", type="password", placeholder="Kata Sandi")
+            
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.form_submit_button("MASUK"):
+            
+            # Tombol Submit
+            submitted = st.form_submit_button("MASUK SYSTEM")
+            
+            if submitted:
                 if check_login(username, password):
                     st.session_state['logged_in'] = True
-                    st.success("Sukses!"); st.rerun()
-                else: st.error("Username/Password Salah!")
-        st.markdown('</div>', unsafe_allow_html=True)
+                    st.success("Akses Diterima!")
+                    st.rerun()
+                else:
+                    st.error("⛔ Username atau Password Salah")
+
+        # Footer kecil di luar kotak
+        st.markdown("""
+            <div style='text-align: center; margin-top: 20px; color: #475569; font-size: 12px;'>
+                © 2025 HR Management System
+            </div>
+        """, unsafe_allow_html=True)
+
     st.stop()
 
 # ==========================================
-# 3. CSS DARK MODE PREMIUM
+# 3. CSS DASHBOARD UTAMA (SETELAH LOGIN)
 # ==========================================
 st.markdown("""
     <style>
     .stApp { background-color: #0f172a; color: #f8fafc; }
     section[data-testid="stSidebar"] { background-color: #1e293b; border-right: 1px solid #334155; }
+    
+    /* Metrics */
     div[data-testid="metric-container"] { background-color: #1e293b; border: 1px solid #334155; padding: 15px; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
     div[data-testid="metric-container"] label { color: #94a3b8; }
     div[data-testid="metric-container"] div[data-testid="stMetricValue"] { color: #38bdf8; }
+    
+    /* Tabel */
     th { background-color: #020617 !important; color: #38bdf8 !important; border-bottom: 2px solid #334155 !important; text-align: center !important; }
     td { color: #e2e8f0 !important; background-color: #1e293b !important; text-align: center !important; }
     
+    /* Fix Warna Input & Selectbox */
     .stTextInput input, .stNumberInput input, .stDateInput input, .stTextArea textarea { 
         background-color: #334155 !important; color: white !important; border: 1px solid #475569 !important; border-radius: 5px; 
     }
@@ -89,10 +192,13 @@ st.markdown("""
     }
     div[data-testid="stSelectbox"] div[data-testid="stMarkdownContainer"] p { color: white !important; }
 
+    /* Tombol Dashboard */
     .stButton button { width: 100%; border-radius: 8px; font-weight: bold; border: none; padding: 10px; }
     button[kind="primary"] { background-color: #3b82f6; color: white; }
     button[kind="secondary"] { background-color: #ef4444; color: white; border: 1px solid #dc2626; }
     .streamlit-expanderHeader { background-color: #1e293b !important; color: white !important; border: 1px solid #334155; }
+    
+    /* Hilangkan instruksi form global */
     [data-testid="stForm"] span[data-testid="InputInstructions"] { display: none; }
     </style>
 """, unsafe_allow_html=True)
@@ -414,7 +520,7 @@ elif selected == "Input Absensi":
                 
                 sel = st.selectbox("Karyawan:", opts)
                 
-                # --- UPDATE NAMA IZIN PAKAI KURUNG ---
+                # --- UPDATE NAMA IZIN ---
                 opsi_absen = ["Sakit (Ada Surat)", "Sakit (Tanpa Surat)", "Izin (Resmi)", "Izin (Tidak Resmi)", "Cuti", "Alpha"]
                 jenis = st.selectbox("Keterangan Absen:", opsi_absen)
                 
