@@ -13,7 +13,7 @@ from streamlit_option_menu import option_menu
 # 1. KONFIGURASI HALAMAN
 # ==========================================
 st.set_page_config(
-    page_title="HRIS PRO",
+    page_title="DASHBOARD HR",
     layout="wide",
     page_icon="🚀",
     initial_sidebar_state="expanded"
