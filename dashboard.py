@@ -135,7 +135,7 @@ if not st.session_state['logged_in']:
             # Header Visual (Icon & Judul)
             st.markdown("""
                 <div class="login-header">
-                    <div class="login-icon">🚀</div>
+                    <div class="login-icon">>🔐</div>
                     <div class="login-title">DASHBOARD HR</div>
                     <div class="login-subtitle">Silahkan Login</div>
                 </div>
